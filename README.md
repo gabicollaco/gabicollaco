@@ -1,16 +1,16 @@
-## Hi there 👋
+# Hi, I'm Gabi Collaço! 👋
 
-<!--
-**gabicollaco/gabicollaco** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Python Developer with experience in both back-end and front-end development.
 
-Here are some ideas to get you started:
+## 🛠 Skills and Technologies
+- **Python**: Application development focused on back-end and front-end.
+- **Tkinter**: Creating intuitive and customized graphical interfaces.
+- **SQL**: Database management and manipulation.
+- **Django**: Developing robust and scalable web applications.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## 📂 Projects
+- **Simple Calculator with Tkinter**: [Link to repository](#) - A calculator with a graphical interface, built using the Tkinter library.
+- **Task Manager with Django**: [Link to repository](#) - A task management system for personal organization and productivity.
+
+## 📫 Contact
+- **Email**: gabilcollaco@gmail.com
