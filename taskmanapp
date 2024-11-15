@@ -1,0 +1,230 @@
+import tkinter as tk
+from tkinter import messagebox, font, Toplevel, Label
+from datetime import datetime
+import sqlite3
+from tkinter import PhotoImage
+
+class Tarefa:
+    def __init__(self, title, date, time, description, completed=False):
+        self.title = title
+        self.date = date
+        self.time = time
+        self.description = description
+        self.completed = completed
+
+    def __str__(self):
+        return f"Tarefa: {self.title}\nData: {self.date}\nHorário: {self.time}\nDescrição: {self.description}\nConcluída: {'Sim' if self.completed else 'Não'}"
+
+class Calendar:
+    def __init__(self):
+        self.conn = sqlite3.connect('tarefas.db')
+        self.cursor = self.conn.cursor()
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tarefas (
+                id INTEGER PRIMARY KEY,
+                title TEXT,
+                date TEXT,
+                time TEXT,
+                description TEXT,
+                completed INTEGER
+            )
+        ''')
+        self.conn.commit()
+        self.tarefas = self.load_tarefas()
+
+    def add_tarefa(self, title, date, time, description):
+        tarefa = Tarefa(title, date, time, description)
+        self.tarefas.append(tarefa)
+        self.cursor.execute('''
+            INSERT INTO tarefas (title, date, time, description, completed)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (title, date, time, description, int(tarefa.completed)))
+        self.conn.commit()
+
+    def remove_tarefa(self, index):
+        tarefa_id = self.get_tarefa_id(index)
+        if tarefa_id is not None:
+            self.cursor.execute('DELETE FROM tarefas WHERE id = ?', (tarefa_id,))
+            self.conn.commit()
+            del self.tarefas[index]
+
+    def load_tarefas(self):
+        self.cursor.execute('SELECT title, date, time, description, completed FROM tarefas')
+        tarefas = []
+        for row in self.cursor.fetchall():
+            tarefas.append(Tarefa(row[0], row[1], row[2], row[3], bool(row[4])))
+        return tarefas
+
+    def get_tarefa_id(self, index):
+        self.cursor.execute('SELECT id FROM tarefas')
+        ids = [row[0] for row in self.cursor.fetchall()]
+        return ids[index] if index < len(ids) else None
+
+    def mark_as_completed(self, index):
+        tarefa_id = self.get_tarefa_id(index)
+        if tarefa_id is not None:
+            self.tarefas[index].completed = True
+            self.cursor.execute('UPDATE tarefas SET completed = 1 WHERE id = ?', (tarefa_id,))
+            self.conn.commit()
+
+    def unmark_as_completed(self, index):
+        tarefa_id = self.get_tarefa_id(index)
+        if tarefa_id is not None:
+            self.tarefas[index].completed = False
+            self.cursor.execute('UPDATE tarefas SET completed = 0 WHERE id = ?', (tarefa_id,))
+            self.conn.commit()
+
+    def save_changes(self):
+        self.conn.commit()
+
+class CalendarApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Minha Lista de Tarefas")
+        self.root.geometry("550x600")
+        self.root.config(bg="thistle")
+
+        self.calendar = Calendar()
+
+        default_font = font.nametofont("TkDefaultFont")
+        self.strike_font = default_font.copy()
+        self.strike_font.configure(overstrike=True)
+
+        self.frame = tk.Frame(root, bg="thistle")
+        self.frame.pack(pady=10)
+
+        # Campos para entrada de tarefa
+        self.title_label = tk.Label(self.frame, text="Nome da tarefa:", bg="thistle")
+        self.title_label.grid(row=0, column=0, pady=5, padx=5)
+        self.title_entry = tk.Entry(self.frame, width=30)
+        self.title_entry.grid(row=0, column=1, pady=5, padx=5)
+
+        self.date_label = tk.Label(self.frame, text="Data (DD/MM/AAAA):", bg="thistle")
+        self.date_label.grid(row=1, column=0, pady=5, padx=5)
+        self.date_entry = tk.Entry(self.frame, width=30)
+        self.date_entry.grid(row=1, column=1, pady=5, padx=5)
+
+        self.time_label = tk.Label(self.frame, text="Horário (HH:MM):", bg="thistle")
+        self.time_label.grid(row=2, column=0, pady=5, padx=5)
+        self.time_entry = tk.Entry(self.frame, width=30)
+        self.time_entry.grid(row=2, column=1, pady=5, padx=5)
+
+        self.desc_label = tk.Label(self.frame, text="Descrição do tarefa:", bg="thistle")
+        self.desc_label.grid(row=3, column=0, pady=5, padx=5)
+        self.desc_entry = tk.Entry(self.frame, width=30)
+        self.desc_entry.grid(row=3, column=1, pady=5, padx=5)
+
+        # Carregar ícones como atributos da classe
+        self.uncheck_icon = PhotoImage(file="icons/unmark.png")
+        self.eye_icon = PhotoImage(file="icons/show.png")
+        self.save_icon = PhotoImage(file="icons/save.png")
+        self.add_icon = PhotoImage(file="icons/add.png")
+        self.check_icon = PhotoImage(file="icons/check.png")
+        self.del_icon = PhotoImage(file="icons/del.png")
+
+         # Lista de tarefas
+        self.tarefas_listbox = tk.Listbox(self.frame, width=70)
+        self.tarefas_listbox.grid(row=6, column=0, columnspan=3, pady=5, padx=5)
+
+        # Botões com imagens
+        self.add_button = tk.Button(self.frame, text="Adicionar tarefa", image=self.add_icon, compound="left", bg="SkyBlue1", command=self.add_tarefa)
+        self.add_button.grid(row=4, column=0, pady=5, padx=5)
+
+        self.complete_button = tk.Button(self.frame, text="Concluir tarefa", image=self.check_icon, compound="left", bg="green3", command=self.mark_task_completed)
+        self.complete_button.grid(row=4, column=1, pady=5, padx=5)
+
+        self.uncomplete_button = tk.Button(self.frame, text="Desmarcar tarefa", image=self.uncheck_icon, compound="left", bg="gold", command=self.unmark_task_completed)
+        self.uncomplete_button.grid(row=4, column=2, pady=5, padx=5)
+
+        self.show_button = tk.Button(self.frame, text="Exibir tarefa", image=self.eye_icon, compound="left", bg="dodger blue", command=self.show_task)
+        self.show_button.grid(row=5, column=0, pady=5, padx=5)
+
+        self.save_button = tk.Button(self.frame, text="Salvar", image=self.save_icon, compound="left", bg="sienna1", command=self.save_changes)
+        self.save_button.grid(row=5, column=1, pady=5, padx=5)
+
+        self.delete_button = tk.Button(self.frame, text="Excluir tarefa", image=self.del_icon, compound="left", bg="red3", command=self.delete_tarefa)
+        self.delete_button.grid(row=5, column=2, pady=5, padx=5)
+
+        self.update_tarefas_listbox()
+
+    def add_tarefa(self):
+        title = self.title_entry.get()
+        date = self.date_entry.get()
+        time = self.time_entry.get()
+        description = self.desc_entry.get()
+
+        if title and date and time and description:
+            try:
+                datetime.strptime(date, "%d/%m/%Y")
+                datetime.strptime(time, "%H:%M")
+                self.calendar.add_tarefa(title, date, time, description)
+                self.clear_entries()
+                self.update_tarefas_listbox()
+            except ValueError:
+                messagebox.showerror("Formato Inválido", "Insira uma data/horário válido.")
+        else:
+            messagebox.showwarning("Informação Incompleta", "Todos os campos devem ser preenchidos.")
+
+    def delete_tarefa(self):
+        selected_index = self.tarefas_listbox.curselection()
+        if selected_index:
+            index = selected_index[0]
+            self.calendar.remove_tarefa(index)
+            self.update_tarefas_listbox()
+        else:
+            messagebox.showwarning("Erro de seleção", "Por favor, selecione uma tarefa para excluir.")
+
+    def mark_task_completed(self):
+        selected_index = self.tarefas_listbox.curselection()
+        if selected_index:
+            index = selected_index[0]
+            self.calendar.mark_as_completed(index)
+            self.update_tarefas_listbox()
+            
+        else:
+            messagebox.showwarning("Erro de seleção", "Por favor, selecione uma tarefa para marcar como concluída.")
+
+    def unmark_task_completed(self):
+        selected_index = self.tarefas_listbox.curselection()
+        if selected_index:
+            index = selected_index[0]
+            self.calendar.unmark_as_completed(index)
+            self.update_tarefas_listbox()
+        else:
+            messagebox.showwarning("Erro de seleção", "Por favor, selecione uma tarefa para desmarcar.")
+
+    def show_task(self):
+        selected_index = self.tarefas_listbox.curselection()
+        if selected_index:
+            index = selected_index[0]
+            tarefa = self.calendar.tarefas[index]
+            tarefa_info = f"Título: {tarefa.title}\nData: {tarefa.date}\nHorário: {tarefa.time}\nDescrição: {tarefa.description}\nConcluída: {'Sim' if tarefa.completed else 'Não'}"
+            messagebox.showinfo("Detalhes da Tarefa", tarefa_info)
+        else:
+            messagebox.showwarning("Erro de seleção", "Por favor, selecione uma tarefa para exibir.")
+
+    def save_changes(self):
+        self.calendar.save_changes()
+        messagebox.showinfo("Salvo", "Alterações salvas com sucesso!")
+
+    def update_tarefas_listbox(self):
+        self.tarefas_listbox.delete(0, tk.END)
+        for tarefa in self.calendar.tarefas:
+            # Adiciona um prefixo '[✔]' para tarefas concluídas
+            tarefa_text = f"[✔] {tarefa.title}" if tarefa.completed else tarefa.title
+            self.tarefas_listbox.insert(tk.END, tarefa_text)
+        # Estilo visual com cores diferentes
+        if tarefa.completed:
+            self.tarefas_listbox.itemconfig(tk.END, {'fg': 'gray'})
+        else:
+            self.tarefas_listbox.itemconfig(tk.END, {'fg': 'black'})
+
+    def clear_entries(self):
+        self.title_entry.delete(0, tk.END)
+        self.date_entry.delete(0, tk.END)
+        self.time_entry.delete(0, tk.END)
+        self.desc_entry.delete(0, tk.END)
+
+root = tk.Tk()
+app = CalendarApp(root)
+root.mainloop()
